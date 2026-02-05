@@ -18,6 +18,7 @@ AVAILABLE_MODELS = [
     "gemini-1.5-flash", 
     "gemini-1.5-pro", 
     "gemini-2.0-flash-exp",
+    "gemini-2.5-flash",
     "gemini-3-flash-preview",
     "gemini-3-pro-preview"
 ]
@@ -56,6 +57,10 @@ PENTING: Ikuti format di bawah ini dengan ketat. Jangan ubah urutan nomor header
 **Kondisi Tersebut Disebabkan Oleh**
 [PARAGRAPH]
 [Isi penyebab...]
+
+**Analisis Governance, Risk dan Compliance**
+[PARAGRAPH]
+[Isi analisis...]
 
 **REKOMENDASI**
 [PARAGRAPH]
@@ -227,7 +232,7 @@ def create_pdf(ai_text):
     return buffer
 
 # --- 7. TAMPILAN UTAMA (UI) ---
-st.title("📑 KKP Generator Pro (Fix Layout)")
+st.title("📑 KKP Generator IA (Audit Toolkit)")
 st.markdown("---")
 
 # Sidebar
@@ -251,7 +256,7 @@ with col_input:
     raw_data = st.text_area(
         "Paste catatan lapangan di sini:", 
         height=400,
-        placeholder="Contoh:\nUnit: Divisi Umum\nTanggal: 5 Feb 2026\nTemuan: Ada selisih kas Rp 500rb..."
+        placeholder="Contoh:\nKKP: 01\nNama Unit Kerja:Divisi TI\nPeriode Audit:1 Januari 2025\nInternal Auditor :1.Ganggas 2. Reandy\nAuditee:Adi Setiansyah\nMateri Pemeriksaan:SLA\nTemuan: belum membuat SLA..."
     )
     
     generate_btn = st.button("🚀 Buat KKP", type="primary", use_container_width=True)
