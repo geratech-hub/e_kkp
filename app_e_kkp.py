@@ -3,7 +3,7 @@ import google.generativeai as genai
 import re
 from io import BytesIO
 
-# Library Dokumen (Pastikan sudah pip install python-docx fpdf)
+# Library Dokumen
 from docx import Document
 from docx.shared import Pt, Inches, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -57,6 +57,10 @@ PENTING: Ikuti format di bawah ini dengan ketat. Jangan ubah urutan nomor header
 **Kondisi Tersebut Disebabkan Oleh**
 [PARAGRAPH]
 [Isi penyebab...]
+
+**Analisis Governance, Risk dan Compliance**
+[PARAGRAPH]
+[Isi analisis...]
 
 **REKOMENDASI**
 [PARAGRAPH]
@@ -227,13 +231,13 @@ def create_pdf(ai_text):
     buffer.seek(0)
     return buffer
 
-# --- 7. TAMPILAN UTAMA (UI & EDITOR) ---
-st.title("📑 KKP Generator Pro (Editor Mode)")
+# --- 7. TAMPILAN UTAMA (UI) ---
+st.title("📑 KKP Generator IA (Audit Toolkit)")
 st.markdown("---")
 
-# Inisialisasi Session State untuk menyimpan draft teks
-if 'kkp_draft' not in st.session_state:
-    st.session_state.kkp_draft = ""
+# Inisialisasi Session State untuk menyimpan hasil AI agar bisa diedit
+if 'kkp_result' not in st.session_state:
+    st.session_state['kkp_result'] = ""
 
 # Sidebar
 with st.sidebar:
@@ -247,109 +251,105 @@ with st.sidebar:
         model_final = model_choice
         
     st.info("Status: Siap Digunakan")
-    
-    st.markdown("---")
-    st.header("🖼️ & 📊 Insert Tools")
-    
-    # Tool Insert Gambar (Simulasi)
-    uploaded_file = st.file_uploader("Upload Foto Bukti", type=['png', 'jpg', 'jpeg'])
-    if uploaded_file is not None:
-        st.caption(f"File: {uploaded_file.name}")
-        if st.button("Sisipkan Kode Foto"):
-            # Menambahkan tag gambar ke editor
-            st.session_state.kkp_draft += f"\n\n[IMAGE: {uploaded_file.name}]\n(Catatan: Pastikan file foto ada di folder yang sama saat convert final)"
 
-# Layout Utama
-col_input, col_editor = st.columns([1, 1.2])
+# Input User
+col_input, col_preview = st.columns([1, 1])
 
 with col_input:
     st.subheader("1. Data Temuan Audit")
     raw_data = st.text_area(
         "Paste catatan lapangan di sini:", 
         height=400,
-        placeholder="Contoh:\nUnit: Divisi Umum\nTanggal: 5 Feb 2026\nTemuan: Ada selisih kas Rp 500rb..."
+        placeholder="Contoh:\nKKP: 01\nNama Unit Kerja:Divisi TI\nPeriode Audit:1 Januari 2025\nInternal Auditor :1.Ganggas 2. Reandy\nAuditee:Adi Setiansyah\nMateri Pemeriksaan:SLA\nTemuan: belum membuat SLA..."
     )
     
-    generate_btn = st.button("🚀 Buat Draft KKP", type="primary", use_container_width=True)
+    generate_btn = st.button("🚀 Buat KKP", type="primary", use_container_width=True)
 
-# Logic Generate AI
+# Logic Eksekusi AI
 if generate_btn:
     if not api_key:
         st.warning("⚠️ Masukkan API Key di sidebar dulu!")
     elif not raw_data:
         st.warning("⚠️ Data temuan masih kosong!")
     else:
+        # Panggil AI
         ai_result = get_ai_response(api_key, model_final, raw_data)
-        if ai_result:
-            st.session_state.kkp_draft = ai_result
-            st.rerun() # Refresh halaman untuk menampilkan hasil di editor
-
-# --- BAGIAN EDITOR DENGAN TOMBOL EDIT ---
-with col_editor:
-    st.subheader("2. Editor & Preview")
-    
-    # --- TOOLBAR EDITOR ---
-    # Baris 1: Alignment
-    c1, c2, c3, c4 = st.columns(4)
-    if c1.button("⬅️ Left"):
-        st.session_state.kkp_draft += "\n[align:left] Teks Rata Kiri [/align]"
-    if c2.button("↔️ Center"):
-        st.session_state.kkp_draft += "\n[align:center] Teks Tengah [/align]"
-    if c3.button("➡️ Right"):
-        st.session_state.kkp_draft += "\n[align:right] Teks Rata Kanan [/align]"
-    if c4.button("🟰 Justify"):
-        st.session_state.kkp_draft += "\n[align:justify] Teks Rata Kanan-Kiri [/align]"
-
-    # Baris 2: Font & Size & Table
-    c5, c6, c7, c8 = st.columns([1.5, 1, 1, 1.5])
-    
-    # Pilihan Font (Hanya menyisipkan tag teks)
-    font_name = c5.selectbox("Jenis Font", ["Arial", "Times New Roman", "Calibri"], label_visibility="collapsed")
-    font_size = c6.number_input("Size", min_value=8, max_value=24, value=11, label_visibility="collapsed")
-    
-    if c7.button("🔤 Apply"):
-        st.session_state.kkp_draft += f"\n[font:{font_name}][size:{font_size}] Teks Custom [/size][/font]"
         
-    if c8.button("📅 Insert Table"):
-        table_template = """
-\n[TABLE_START]
-| Header 1 | Header 2 | Header 3 |
-| :--- | :---: | ---: |
-| Data 1 | Data 2 | Data 3 |
-[TABLE_END]
-"""
-        st.session_state.kkp_draft += table_template
+        if ai_result:
+            st.session_state['kkp_result'] = ai_result
+            st.success("Draft berhasil dibuat! Silakan edit di kolom sebelah kanan.")
 
-    # --- TEXT AREA EDITOR (Terikat dengan session_state) ---
-    edited_text = st.text_area(
-        "Edit Hasil AI di sini:", 
-        value=st.session_state.kkp_draft,
-        height=500,
-        key="editor_area"
-    )
+# --- BAGIAN PREVIEW & EDIT ---
+with col_preview:
+    st.subheader("2. Review & Edit")
     
-    # Update session state jika user mengetik manual
-    st.session_state.kkp_draft = edited_text
-    
-    st.info("💡 Tombol di atas akan menambahkan kode format ke bagian paling bawah teks. Silakan Cut/Paste ke posisi yang diinginkan.")
+    # Hanya tampilkan jika ada data
+    if st.session_state['kkp_result']:
+        
+        # --- TOOLBAR EDITOR (FITUR TAMBAHAN) ---
+        with st.expander("🛠️ **Editor Tools** (Klik untuk buka)", expanded=True):
+            st.caption("Klik tombol untuk menyisipkan format di akhir teks:")
+            
+            # Baris 1: Alignment
+            c1, c2, c3, c4 = st.columns(4)
+            if c1.button("⬅️ Left"):
+                st.session_state['kkp_result'] += "\n[align:left] Teks Rata Kiri [/align]"
+            if c2.button("↔️ Center"):
+                st.session_state['kkp_result'] += "\n[align:center] Teks Tengah [/align]"
+            if c3.button("➡️ Right"):
+                st.session_state['kkp_result'] += "\n[align:right] Teks Rata Kanan [/align]"
+            if c4.button("🟰 Justify"):
+                st.session_state['kkp_result'] += "\n[align:justify] Teks Rata Kanan-Kiri [/align]"
 
-    # Tombol Download
-    b1, b2 = st.columns(2)
-    
-    docx_file = create_docx(st.session_state.kkp_draft)
-    with b1:
-        st.download_button(
-            label="📥 Download Word (.docx)",
-            data=docx_file,
-            file_name="KKP_Final_Edit.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            # Baris 2: Font & Size
+            c5, c6, c7 = st.columns([2, 1, 1])
+            font_opt = c5.selectbox("Jenis Font", ["Arial", "Times New Roman", "Calibri"], key="font_sel")
+            size_opt = c6.number_input("Ukuran", 8, 24, 11, key="size_sel")
+            if c7.button("🔤 Apply"):
+                st.session_state['kkp_result'] += f"\n[font:{font_opt}][size:{size_opt}] Teks Custom [/size][/font]"
+
+            # Baris 3: Media & Table
+            c8, c9 = st.columns(2)
+            uploaded_img = c8.file_uploader("Upload Foto", type=['jpg', 'png', 'jpeg'], key="img_up")
+            if uploaded_img and c8.button("📸 Insert Foto"):
+                st.session_state['kkp_result'] += f"\n[IMAGE: {uploaded_img.name}]"
+                st.info("Tag foto disisipkan. Pastikan file foto satu folder saat convert final.")
+            
+            if c9.button("📅 Buat Tabel"):
+                st.session_state['kkp_result'] += "\n\n| Header 1 | Header 2 |\n| --- | --- |\n| Data 1 | Data 2 |"
+
+        # --- TEXT AREA UTAMA (BISA DIEDIT) ---
+        # Value diambil dari session_state agar perubahan tersimpan
+        edited_text = st.text_area(
+            "Edit KKP di sini:", 
+            value=st.session_state['kkp_result'], 
+            height=400,
+            key="editor_area"
         )
-    
-    pdf_file = create_pdf(st.session_state.kkp_draft)
-    with b2:
-        st.download_button(
-            label="📥 Download PDF (.pdf)",
-            data=pdf_file,
-            file_name="KKP_Final_Edit.pdf",
-            mime="application/pdf"
-        )
+        
+        # Update session state jika user mengetik manual di text area
+        st.session_state['kkp_result'] = edited_text
+        
+        # --- TOMBOL DOWNLOAD ---
+        st.write("---")
+        b1, b2 = st.columns(2)
+        
+        # DOCX
+        docx_file = create_docx(st.session_state['kkp_result'])
+        with b1:
+            st.download_button(
+                label="📥 Download Word (.docx)",
+                data=docx_file,
+                file_name="KKP_Final_Rapi.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        
+        # PDF
+        pdf_file = create_pdf(st.session_state['kkp_result'])
+        with b2:
+            st.download_button(
+                label="📥 Download PDF (.pdf)",
+                data=pdf_file,
+                file_name="KKP_Final_Rapi.pdf",
+                mime="application/pdf"
+            )
